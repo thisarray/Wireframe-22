@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>scramble</title>
+  <script src="../jsgame0.js"></script>
+  <style type="text/css" media="screen">
+body {
+  background-color: white;
+  color: black;
+}
+.hidden {
+  display: none;
+}
+#screen {
+  background-image: url(images/space.jpg);
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+#original {
+  margin-left: 1em;
+}
+  </style>
+</head>
+
+<body>
+<section id="imageLoader" class="hidden">
+  <img class="hidden" src="images/jet.png" alt="jet">
+  <img class="hidden" src="images/space.jpg" alt="space">
+</section>
+
+<main>
+<h1>scramble</h1>
+
+<canvas id="screen">
+The game screen appears here if your browser supports the Canvas API.
+</canvas>
+<section id="controls">
+  <button type="button" id="reset">Reset</button>
+  <button type="button" id="pause">Pause</button>
+</section>
+
+<h2>Attribution</h2>
+
+<p><a href="https://wireframe.raspberrypi.org/issues/22">Source Code: Create a Scramble-style scrolling landscape, pages 40-41, by Mark Vanstone</a>.</p>
+
+<p>Licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/legalcode">Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported</a>.</p>
+
+<h2>Original Python code</h2>
+
+<pre id="original"><code>
+# Scramble
+from random import randint
+from pygame import Surface
+from pygame.locals import *
+import math
+
+scrambleSurface = Surface((800,600),SRCALPHA)
+landLevel = 600
+roofLevel = 10
+landChange = -3
+roofChange = 3
+jet = Actor(&#x27;jet&#x27;,(400,300))
+speed = 3
+crash = False
+
+def draw():
+    if crash: # remove the next line if you are affected by flashing lights
+        screen.fill((randint(100,200),0,0))
+        screen.blit(scrambleSurface, (0, 0))
+        jet.draw()
+    else:
+        screen.blit(&#x27;space&#x27;,(0,0))
+        screen.blit(scrambleSurface, (0, 0))
+        jet.draw()
+
+def update():
+    global speed, crash
+    if crash == False:
+        if keyboard.up: jet.y -= speed
+        if keyboard.down: jet.y += speed
+        if keyboard.left: speed = limit(speed-0.1,1,10)
+        if keyboard.right: speed = limit(speed+0.1,1,10)
+        jet.x = 310 + (speed * 30)
+        for _ in range(math.ceil(speed)):
+            updateLand()
+        if scrambleSurface.get_at((math.ceil(jet.x+32),math.ceil(jet.y))) != (0,0,0,0):
+            crash = True;
+
+def updateLand():
+    global landLevel, landChange, roofLevel, roofChange
+    if randint(0,10) == 3: roofChange = randint(0,6) - 3
+    if randint(0,10) == 3: landChange = randint(0,6) - 3
+    roofLevel += roofChange
+    landLevel += landChange
+    landLevel = limit(landLevel,200,590)
+    roofLevel = limit(roofLevel,10,400)
+    if roofLevel &gt; landLevel-200: roofLevel = landLevel-200
+    scrambleSurface.scroll(-1,0)
+    drawLand()
+
+def limit(n, minn, maxn):
+    return max(min(maxn, n), minn)
+
+def drawLand():
+    for i in range(0, 600):
+        c = (0,0,0,0)
+        if i &gt; landLevel:
+            g = limit(i-landLevel,0,255)
+            c = (255,g,0)
+        else:
+            if i &lt; roofLevel:
+                r = limit(roofLevel-i,0,255)
+                c = (255,r,0)
+        scrambleSurface.set_at((799,i),c)
+
+</code></pre>
+</main>
+
+<script>
+// Scramble
+const SCREEN = document.querySelector('#screen');
+
+var scrambleSurface, landLevel, roofLevel, landChange, roofChange, jet, speed, crash;
+
+function reset() {
+  screen.clear('transparent');
+  scrambleSurface = screen.getSurface();
+
+  landLevel = 600;
+  roofLevel = 10;
+  landChange = -3;
+  roofChange = 3;
+  jet = new Actor('jet');
+  jet.pos = [400, 300];
+  speed = 3;
+
+  /*
+   * crash is changed from a Boolean to a Number.
+   * It is set to a random positive number that is used as the red
+   * component in the background color when the player crashes.
+   * This avoids the flashing lights had we kept changing the color.
+   */
+  crash = 0;
+}
+
+function draw() {
+  /*
+   * scrambleSurface replaces the entire screen when blit().
+   * So we fake drawing underneath by modifying the CSS background.
+   */
+  if (crash > 0) {
+    SCREEN.style.backgroundImage = 'none';
+    // Since crash does not change, there is no flashing lights
+    SCREEN.style.backgroundColor = `rgb(${ crash }, 0, 0)`;
+  }
+  else {
+    SCREEN.style.backgroundImage = 'url(images/space.jpg)';
+  }
+
+  screen.blit(scrambleSurface, [0, 0]);
+  jet.draw();
+}
+
+/*
+ * Return a random integer N such that min <= N < max.
+ */
+function getRandomInteger(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor((Math.random() * (max - min)) + min);
+}
+
+function update() {
+  if (crash <= 0) {
+    if (keyboard[keys.UP]) {
+      jet.posy -= speed;
+    }
+    if (keyboard[keys.DOWN]) {
+      jet.posy += speed;
+    }
+    if (keyboard[keys.LEFT]) {
+      speed = limit(speed - 0.1, 1, 10);
+    }
+    if (keyboard[keys.RIGHT]) {
+      speed = limit(speed + 0.1, 1, 10);
+    }
+    jet.posx = 310 + (speed * 30);
+    updateLand(Math.ceil(speed));
+    if (!Surface.isColorEqual(
+      scrambleSurface.getAt(Math.ceil(jet.posx + 32), Math.ceil(jet.posy)),
+      [0, 0, 0, 0])) {
+      crash = getRandomInteger(100, 201);
+    }
+  }
+}
+
+function updateLand(offset) {
+  /*
+   * Mimic scroll() by drawing the old Surface to the screen at (-offset, 0)
+   * and then getting a new Surface.
+   * drawLand() below will take care of cleaning up the sliver on the right.
+   */
+  screen.blit(scrambleSurface, [-offset, 0]);
+  scrambleSurface = screen.getSurface();
+
+  for (let x = 800 - offset; x < 800; x++) {
+    if (getRandomInteger(0, 11) === 3) {
+      roofChange = getRandomInteger(0, 7) - 3;
+    }
+    if (getRandomInteger(0, 11) === 3) {
+      landChange = getRandomInteger(0, 7) - 3;
+    }
+    roofLevel += roofChange;
+    landLevel += landChange;
+    landLevel = limit(landLevel, 200, 590);
+    roofLevel = limit(roofLevel, 10, 400);
+    if (roofLevel > (landLevel - 200)) {
+      roofLevel = landLevel - 200;
+    }
+    drawLand(x);
+  }
+}
+
+function limit(n, minn, maxn) {
+  return Math.max(Math.min(maxn, n), minn);
+}
+
+function drawLand(x) {
+  for (let y = 0; y < 600; y++) {
+    let c = [0, 0, 0, 0];
+    if (y > landLevel) {
+      c = [255, limit(y - landLevel, 0, 255), 0, 255];
+    }
+    else {
+      if (y < roofLevel) {
+        c = [255, limit(roofLevel - y, 0, 255), 0, 255];
+      }
+    }
+    scrambleSurface.setAt(x, y, c);
+  }
+}
+
+window.addEventListener('load', (event) => {
+  images.LOAD('#imageLoader img');
+  // Non-standard order for Surface
+  screen.set_mode('#screen', '#reset', '#pause');
+  reset();
+  screen.draw.playButton();
+});
+</script>
+</body>
+
+</html>
